@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <title>半導體資料聚合工具 (EDA Mapper) - V35</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 <style>
     body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background-color: #f4f7f6; }
     
@@ -116,8 +117,8 @@
     <div style="background:white; padding:40px; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.3); text-align:center; color:#333;">
         <h2 style="color:#005a9e; margin-top:0;">🔒 半導體資料聚合工具</h2>
         <p style="color:#666; font-size:14px; margin-bottom:20px;">此為機密工具，請輸入存取密碼以繼續</p>
-        <input type="password" id="sys-password" placeholder="請輸入密碼..." style="padding:10px; font-size:16px; border:1px solid #ccc; border-radius:4px; width:200px; text-align:center;" onkeypress="if(event.key==='Enter') checkSystemPassword()">
-        <br><button class="btn btn-primary" style="margin-top:20px; width:200px; padding:10px; font-size:16px;" onclick="checkSystemPassword()">登入系統</button>
+        <input type="password" id="sys-password" placeholder="請輸入密碼..." style="padding:10px; font-size:16px; border:1px solid #ccc; border-radius:4px; width:200px; text-align:center;" onkeypress="if(event.key==='Enter') unlockApp()">
+        <br><button class="btn btn-primary" style="margin-top:20px; width:200px; padding:10px; font-size:16px;" onclick="unlockApp()">登入系統</button>
         <div id="login-error" style="color:#dc3545; margin-top:15px; font-weight:bold; display:none;">❌ 密碼錯誤，請重新輸入！</div>
     </div>
 </div>
