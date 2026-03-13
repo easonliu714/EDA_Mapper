@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<title>半導體資料聚合工具 (EDA Mapper) - V35</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
+<style>
+    body { font-family: "Microsoft JhengHei", sans-serif; margin: 0; display: flex; flex-direction: column; height: 100vh; background-color: #f4f7f6; }
+    
+    /* Top Bar */
+    .top-bar { background: #005a9e; color: white; padding: 10px 20px; display: flex; align-items: center; gap: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); z-index: 10; }
+    .top-bar select, .top-bar input { padding: 5px; font-size: 14px; border-radius:3px; border:1px solid #ccc; }
+    .btn { cursor: pointer; background: #fff; color: #005a9e; border: 1px solid #ccc; border-radius: 4px; font-weight: bold; transition: 0.2s; padding: 6px 15px;}
+    .btn:hover { background: #e0e0e0; }
+    .btn-primary { background: #28a745; color: white; border: none; }
+    .btn-primary:hover { background: #218838; }
+    .btn-danger { background: #dc3545; color: white; border: none; }
+    .btn-danger:hover { background: #c82333; }
+    .btn-info { background: #17a2b8; color: white; border: none; }
+    .btn-info:hover { background: #138496; }
+    .btn-warning { background: #e67e22; color: white; border: none; }
+    .btn-warning:hover { background: #d35400; }
+
+    /* Main Layout */
+    .main-container { display: flex; flex: 1; overflow: hidden; }
+    .sidebar { width: 260px; background: #2c3e50; color: white; display: flex; flex-direction: column; overflow-y: auto; flex-shrink: 0;}
+    .sidebar-header { background: #1a252f; padding: 12px 15px; font-weight: bold; cursor: pointer; border-bottom: 1px solid #34495e; color: #f1c40f; display: flex; justify-content: space-between; user-select: none;}
+    .sidebar-header:hover { background: #0f171e; }
+    .sidebar-group { display: none; flex-direction: column; background: #2c3e50; }
+    .sidebar-group.open { display: flex; }
+    .tab-btn { padding: 12px 15px 12px 30px; text-align: left; background: none; color: #bdc3c7; border: none; border-bottom: 1px solid #34495e; cursor: pointer; font-size: 13px; transition: 0.2s; }
+    .tab-btn:hover { background: #34495e; color: white; }
+    .tab-btn.active { background: #0078d7; color: white; font-weight: bold; border-left: 5px solid #f1c40f; }
+
+    /* Content Area */
+    .content-area { flex: 1; padding: 20px; overflow-y: auto; background: #fff; position: relative; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+    
+    .import-section { background: #f8f9fa; border: 1px solid #ddd; padding: 15px; border-radius: 5px; margin-bottom: 20px; display: grid; grid-template-columns: 1fr 1fr; gap: 10px;}
+    .form-group { display: flex; align-items: center; gap: 10px; }
+    .form-group label { font-weight: bold; width: 140px; flex-shrink: 0; color: #333; }
+    .form-group input[type="text"], .form-group select { flex: 1; padding: 6px; border: 1px solid #ccc; border-radius: 3px; max-width: 300px;}
+    .full-width { grid-column: 1 / span 2; }
+    .paste-area { width: 100%; height: 80px; padding: 10px; box-sizing: border-box; resize: vertical; margin-top: 10px; font-family: monospace; border: 1px dashed #0078d7; }
+
+    /* Derived & Pivot Fields */
+    .derived-section { background: #eef5fa; border: 1px solid #b8d4ea; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+    .rule-row { display: flex; gap: 8px; align-items: center; margin-top: 10px; background: #fff; padding: 8px; border: 1px solid #ddd; border-radius: 4px; flex-wrap: wrap;}
+    .help-box { font-size: 13px; color: #555; background: #fff; padding: 10px; border: 1px dashed #ccc; margin-bottom: 10px; border-radius: 4px; }
+    .live-preview { color: #0078d7; font-weight: bold; font-size: 13px; background: #e6f2ff; padding: 3px 8px; border-radius: 12px; border: 1px solid #b8d4ea; margin-left: auto;}
+    
+    /* 雙層卷軸同步 CSS */
+    .table-wrapper { border: 1px solid #ccc; box-shadow: 0 2px 4px rgba(0,0,0,0.05); position: relative; }
+    .top-scroll-wrapper { width: 100%; overflow-x: auto; height: 16px; background: #f0f0f0; }
+    .top-scroll-dummy { height: 1px; }
+    .preview-container { overflow-x: auto; max-height: 450px; }
+    table.preview-table { border-collapse: collapse; width: max-content; background: #fff; min-width: 100%; }
+    .preview-table th, .preview-table td { border: 1px solid #ddd; padding: 6px 10px; text-align: center; font-size: 13px; white-space: nowrap; }
+    .preview-table th { background: #0078d7; color: white; position: sticky; top: 0; z-index: 1; font-weight: bold; }
+    
+    th.editable-header { cursor: pointer; transition: background 0.2s; position: relative; padding-right: 25px;}
+    th.editable-header:hover { background-color: #005a9e; }
+    .filter-icon { position: absolute; right: 5px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #fff; opacity: 0.7; transition: 0.2s;}
+    .filter-icon:hover { opacity: 1; color: #f1c40f; transform: translateY(-50%) scale(1.2); }
+    .interactive-row { cursor: pointer; transition: background 0.1s; }
+    .interactive-row:hover { background-color: #e6f2ff; }
+    .selected-header { background-color: #fff2cc !important; font-weight: bold; border: 2px solid #d6b656; }
+    .skip-row td { background: #f9f9f9; color: #888; font-style: italic; letter-spacing: 2px;}
+
+    #filter-modal { display: none; position: absolute; background: #fff; border: 1px solid #ccc; padding: 10px; z-index: 10000; box-shadow: 0 4px 10px rgba(0,0,0,0.2); max-height: 250px; width: 220px; overflow-y: auto; border-radius: 5px;}
+    .filter-item { display: flex; align-items: center; gap: 5px; margin-bottom: 5px; font-size: 13px; cursor: pointer;}
+    
+    /* Map Phase 2 UI */
+    .map-warning { background: #f8d7da; color: #721c24; padding: 15px; border: 1px solid #f5c6cb; border-radius: 5px; margin-bottom: 20px; font-weight: bold; }
+    .map-controls { background: #e9ecef; padding: 15px; border-radius: 5px; margin-bottom: 10px; display: flex; gap: 15px; align-items: center; flex-wrap: wrap; border: 1px solid #ced4da; }
+    .map-controls select, .map-controls input { padding: 4px; border-radius: 3px; border: 1px solid #ccc; width: 100px; }
+    .map-canvas-area { border: 1px solid #ccc; background: #fdfdfd; padding: 15px; border-radius: 5px; min-height: 450px; display: flex; justify-content: center; position: relative; overflow: auto;}
+    
+    /* Wafer Phase 2 UI (1-2) */
+    .split-layout { display: flex; gap: 20px; width: 100%; }
+    .split-left { flex: 1; background: #f8f9fa; padding: 15px; border-radius: 5px; border: 1px solid #ddd; display: flex; flex-direction: column; align-items: center; max-width: 440px;}
+    .split-right { flex: 2; display: flex; justify-content: center; align-items: center; border: 1px dashed #ccc; background: #fff; position: relative; overflow: auto;}
+
+    .wafer-wrapper { width: 400px; height: 400px; border-radius: 50%; background: #ebf5fb; border: 3px solid #85929e; position: relative; margin: 10px auto; clip-path: polygon(20% 0, 80% 0, 100% 8%, 100% 100%, 0 100%, 0 8%); box-shadow: inset 0 0 20px rgba(0,0,0,0.1); }
+    .wafer-street-h { position: absolute; top: 50%; left: 0; right: 0; height: 10px; background: #fff; transform: translateY(-50%); z-index: 1;}
+    .wafer-street-v { position: absolute; left: 50%; top: 0; bottom: 0; width: 10px; background: #fff; transform: translateX(-50%); z-index: 1;}
+    .quad-zone { position: absolute; width: 45%; height: 45%; display: flex; align-items: center; justify-content: center; z-index: 2; border-radius: 8px; transition: 0.2s;}
+    .quad-zone.drag-over { background: rgba(241, 196, 15, 0.3); border: 2px dashed #e67e22; }
+    .qz-tl { top: 5%; left: 3%; } .qz-tr { top: 5%; right: 3%; } .qz-bl { bottom: 3%; left: 3%; } .qz-br { bottom: 3%; right: 3%; }
+    .quad-item { background: #2874a6; color: white; width: 100%; height: 100%; border-radius: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: bold; cursor: grab; box-shadow: 0 4px 6px rgba(0,0,0,0.2); border: 1px solid #1b4f72;}
+    .quad-item:active { cursor: grabbing; transform: scale(0.95); }
+    .quad-item select { font-size: 11px; width: 65px; padding: 1px; margin-top: 3px; color: black; border: 1px solid #ccc; border-radius: 2px;}
+
+    /* Map Legend & Tooltip UI */
+    .legend-container { width: 110px; margin-left: 20px; display: flex; flex-direction: column; align-items: center; background: #fff; padding: 10px; border: 1px solid #eee; border-radius: 5px; flex-shrink: 0;}
+    .legend-bar { width: 25px; height: 280px; background: linear-gradient(to top, blue, cyan, lime, yellow, red); border: 1px solid #333; position: relative; margin-bottom: 5px; }
+    .cat-legend-item { display:flex; align-items:center; gap:5px; font-size:11px; margin-bottom:4px; width:100%;}
+    .cat-color-box { width:15px; height:15px; border:1px solid #333; flex-shrink:0;}
+    
+    .stats-panel { margin-left: 15px; background: #fff; border: 1px solid #c3e6cb; border-radius: 5px; padding: 10px; font-size: 12px; line-height: 1.6; min-width: 160px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); flex-shrink: 0;}
+    .stats-panel h4 { margin: 0 0 5px 0; color: #1e8449; border-bottom: 1px solid #ddd; padding-bottom: 3px;}
+    .stats-panel span.val { float: right; font-weight: bold; color: #005a9e; }
+
+    #map-tooltip { position: fixed; display: none; background: rgba(0,0,0,0.85); color: #fff; padding: 8px 12px; border-radius: 4px; pointer-events: none; font-size: 12px; z-index: 10000; box-shadow: 0 2px 5px rgba(0,0,0,0.3); line-height: 1.4; border: 1px solid #555; white-space: nowrap;}
+
+    /* Loading Mask */
+    .loading-mask { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255,255,255,0.85); z-index: 9999; display: none; justify-content: center; align-items: center; flex-direction: column; }
+    .spinner { border: 5px solid #f3f3f3; border-top: 5px solid #0078d7; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+    @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<div id="login-mask" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#2c3e50; z-index:100000; display:flex; justify-content:center; align-items:center; flex-direction:column; color:white;">
+    <div style="background:white; padding:40px; border-radius:8px; box-shadow:0 4px 15px rgba(0,0,0,0.3); text-align:center; color:#333;">
+        <h2 style="color:#005a9e; margin-top:0;">🔒 半導體資料聚合工具</h2>
+        <p style="color:#666; font-size:14px; margin-bottom:20px;">此為機密工具，請輸入存取密碼以繼續</p>
+        <input type="password" id="sys-password" placeholder="請輸入密碼..." style="padding:10px; font-size:16px; border:1px solid #ccc; border-radius:4px; width:200px; text-align:center;" onkeypress="if(event.key==='Enter') checkSystemPassword()">
+        <br><button class="btn btn-primary" style="margin-top:20px; width:200px; padding:10px; font-size:16px;" onclick="checkSystemPassword()">登入系統</button>
+        <div id="login-error" style="color:#dc3545; margin-top:15px; font-weight:bold; display:none;">❌ 密碼錯誤，請重新輸入！</div>
+    </div>
+</div>
+
+<div id="loading-mask" class="loading-mask"><div class="spinner"></div><div id="loading-text" style="margin-top:15px; font-weight:bold; font-size:16px; color:#005a9e;">處理中...</div></div>
+<div id="map-tooltip"></div>
+<input type="file" id="import-config-input" accept=".json" style="display:none;" onchange="importConfig(event)">
+
+<div id="filter-modal">
+    <div style="font-weight:bold; margin-bottom:10px; color:#005a9e;">資料篩選 <button class="btn btn-primary" style="float:right; padding:2px 8px; font-size:12px;" onclick="applyFilter()">確認</button></div>
+    <label class="filter-item"><input type="checkbox" id="filter-all" onchange="toggleAllFilters(this)"> (全選/全不選)</label>
+    <div id="filter-list" style="margin-top:5px; border-top:1px solid #eee; padding-top:5px;"></div>
+</div>
+
+<div class="top-bar">
+    <strong style="font-size: 18px;">EDA Mapper V35 (防護與設定優化)</strong>
+    <label style="margin-left: 15px;">目前 PN:</label>
+    <select id="pn-select" onchange="changePN()"></select>
+    <button class="btn" onclick="addPN()">➕ 新增 (複製當前)</button>
+    <button class="btn btn-danger" onclick="deletePN()">🗑️ 刪除</button>
+    
+    <button class="btn btn-info" style="margin-left: auto;" onclick="exportConfig()">📤 匯出設定</button>
+    <button class="btn btn-warning" onclick="document.getElementById('import-config-input').click()">📥 匯入設定</button>
+    <button class="btn btn-primary" onclick="saveGlobalConfig(true)">💾 儲存本機</button>
+</div>
+
+<div class="main-container">
+    <div class="sidebar" id="sidebar">
+        <div class="sidebar-header" onclick="toggleGroup('p1')">📂 階段一：匯入與解析 <span id="icon-p1">▼</span></div>
+        <div id="group-p1" class="sidebar-group open"></div>
+        <div class="sidebar-header" onclick="toggleGroup('p2')">🗺️ 階段二：MAP 關聯與組合 <span id="icon-p2">▶</span></div>
+        <div id="group-p2" class="sidebar-group"></div>
+        <div class="sidebar-header" onclick="toggleGroup('p3')">🚀 階段三：多表融合與匯出 <span id="icon-p3">▶</span></div>
+        <div id="group-p3" class="sidebar-group"></div>
+    </div>
+    <div class="content-area" id="content-area"></div>
+</div>
+
+<script src="app.min.js"></script>
+</body>
+</html>
