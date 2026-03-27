@@ -2,7 +2,7 @@
 <html lang="zh-TW">
 <head>
 <meta charset="UTF-8">
-<title>半導體資料聚合工具 (EDA Mapper) - V37</title>
+<title>半導體資料聚合工具 (EDA Mapper) - V37.1</title>
 <script src="https://cdn.sheetjs.com/xlsx-0.18.5/package/dist/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
 <style>
@@ -134,7 +134,9 @@
 </div>
 
 <div class="top-bar">
-    <strong style="font-size: 18px;">EDA Mapper V37 (增加清除資料或檔案功能)</strong>
+    <button class="btn btn-danger" style="margin-right: 10px; font-size: 13px;" onclick="if(confirm('⚠️ 警告：這將會清除所有暫存的資料表與設定檔，並將系統恢復至初始狀態。\\n\\n確定要重置系統嗎？')) { localStorage.clear(); location.reload(); }">⚠️ 重置系統</button>
+    
+    <strong style="font-size: 18px;">EDA Mapper V37.1 (增加清除資料或檔案功能)</strong>
     <label style="margin-left: 15px;">目前 PN:</label>
     <select id="pn-select" onchange="changePN()"></select>
     <button class="btn" onclick="addPN()">➕ 新增 (複製當前)</button>
